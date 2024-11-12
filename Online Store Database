@@ -1,0 +1,150 @@
+USE OnlineStoreDatabase;
+--Create Tables
+--Organizes products into categories
+CREATE TABLE Categories (
+    category_id INT PRIMARY KEY IDENTITY(1,1),
+    category_name NVARCHAR(100) NOT NULL UNIQUE,
+    description NVARCHAR(255)
+);
+--Products to store product details
+CREATE TABLE Products (
+	product_id INT PRIMARY KEY IDENTITY (1,1),
+	product_name NVARCHAR(100) NOT NULL,
+	category_id INT,
+	price DECIMAL(10,2) NOT NULL,
+	stock_quantity INT DEFAULT 0 CHECK (stock_quantity >= 0),
+    description NVARCHAR(1000),
+    date_added DATE DEFAULT GETDATE(),
+    FOREIGN KEY (category_id) REFERENCES Categories(category_id)
+);
+--customers contain customer information and loyalty points
+CREATE TABLE Customers (
+    customer_id INT PRIMARY KEY IDENTITY(1,1),
+    first_name NVARCHAR(100) NOT NULL,
+    last_name NVARCHAR(100) NOT NULL,
+    email NVARCHAR(255) NOT NULL UNIQUE,
+    phone NVARCHAR(15),
+    address NVARCHAR(255),
+    city NVARCHAR(100),
+    state NVARCHAR(100),
+    postal_code NVARCHAR(20),
+    join_date DATE DEFAULT GETDATE(),
+    loyalty_points INT DEFAULT 0 CHECK (loyalty_points >= 0),
+    vip_status BIT DEFAULT 0
+);
+--Orders track order, shipping and status information
+CREATE TABLE Orders (
+    order_id INT PRIMARY KEY IDENTITY(1,1),
+    customer_id INT NOT NULL,
+    order_date DATE DEFAULT GETDATE(),
+    status NVARCHAR(50) DEFAULT 'Pending',
+    shipping_address NVARCHAR(255),
+    city NVARCHAR(100),
+    state NVARCHAR(100),
+    postal_code NVARCHAR(20),
+    shipping_fee DECIMAL(10, 2) DEFAULT 0.00,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (customer_id) REFERENCES Customers(customer_id)
+);
+--OrderDetails stores individual items for each order, allowing multiple products per order
+CREATE TABLE OrderDetails (
+    order_detail_id INT PRIMARY KEY IDENTITY(1,1),
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES Orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES Products(product_id)
+);
+--support payment and support multiple methods of payment
+CREATE TABLE Payments (
+    payment_id INT PRIMARY KEY IDENTITY(1,1),
+    order_id INT NOT NULL,
+    payment_date DATE DEFAULT GETDATE(),
+    amount DECIMAL(10, 2) NOT NULL,
+    payment_method NVARCHAR(50) CHECK (payment_method IN ('Credit Card', 'Debit Card', 'PayPal', 'Bank Transfer')),
+    FOREIGN KEY (order_id) REFERENCES Orders(order_id)
+);
+--Proctreviews allows customers to rate and review products
+CREATE TABLE ProductReviews (
+    review_id INT PRIMARY KEY IDENTITY(1,1),
+    product_id INT NOT NULL,
+    customer_id INT NOT NULL,
+    rating DECIMAL(2, 1) CHECK (rating >= 0 AND rating <= 5),
+    review_text NVARCHAR(1000),
+    review_date DATE DEFAULT GETDATE(),
+    FOREIGN KEY (product_id) REFERENCES Products(product_id),
+    FOREIGN KEY (customer_id) REFERENCES Customers(customer_id)
+);
+--Inventorychanges monitors changes to product inventory and useful for managing stock.
+CREATE TABLE InventoryChanges (
+    inventory_change_id INT PRIMARY KEY IDENTITY(1,1),
+    product_id INT NOT NULL,
+    change_date DATE DEFAULT GETDATE(),
+    change_type NVARCHAR(50) CHECK (change_type IN ('Sale', 'Restock', 'Adjustment')),
+    quantity_change INT NOT NULL,
+    FOREIGN KEY (product_id) REFERENCES Products(product_id)
+);
+--Discounts/Promotions Table to help manage promotional discounts, coupon codes, and seasonal sales. This could link to specific products or apply across entire orders.
+CREATE TABLE Discounts (
+    discount_id INT PRIMARY KEY IDENTITY(1,1),
+    discount_code NVARCHAR(50) UNIQUE,
+    description NVARCHAR(255),
+    discount_percentage DECIMAL(5, 2) CHECK (discount_percentage >= 0 AND discount_percentage <= 100),
+    start_date DATE,
+    end_date DATE
+);
+--Allow customers to create wishlists, which can be linked to their accounts for future purchases.
+CREATE TABLE Wishlists (
+    wishlist_id INT PRIMARY KEY IDENTITY(1,1),
+    customer_id INT NOT NULL,
+    product_id INT NOT NULL,
+    date_added DATE DEFAULT GETDATE(),
+    FOREIGN KEY (customer_id) REFERENCES Customers(customer_id),
+    FOREIGN KEY (product_id) REFERENCES Products(product_id)
+);
+--A UserActivity tracking table to record customer actions (e.g., views, clicks) can help you gather data for recommendations.
+CREATE TABLE UserActivity (
+    activity_id INT PRIMARY KEY IDENTITY(1,1),
+    customer_id INT NOT NULL,
+    product_id INT,
+    activity_type NVARCHAR(50) CHECK (activity_type IN ('View', 'Click', 'Share')),
+    activity_date DATE DEFAULT GETDATE(),
+    FOREIGN KEY (customer_id) REFERENCES Customers(customer_id),
+    FOREIGN KEY (product_id) REFERENCES Products(product_id)
+);
+--Order tracking system to expand the Orders table with fields for tracking shipping updates.
+ALTER TABLE Orders
+ADD tracking_number NVARCHAR(50),
+    shipping_provider NVARCHAR(100),
+    delivery_date DATE;
+
+--ProductRecommendations table to store recommended products based on purchases or user interests can help enhance customer experience.
+CREATE TABLE ProductRecommendations (
+    recommendation_id INT PRIMARY KEY IDENTITY(1,1),
+    product_id INT NOT NULL,
+    recommended_product_id INT NOT NULL,
+    FOREIGN KEY (product_id) REFERENCES Products(product_id),
+    FOREIGN KEY (recommended_product_id) REFERENCES Products(product_id)
+);
+--create a SupportTickets table where users can report issues or request help.
+CREATE TABLE SupportTickets (
+    ticket_id INT PRIMARY KEY IDENTITY(1,1),
+    customer_id INT NOT NULL,
+    issue_type NVARCHAR(50),
+    description NVARCHAR(1000),
+    status NVARCHAR(50) DEFAULT 'Open',
+    submission_date DATE DEFAULT GETDATE(),
+    resolution_date DATE,
+    FOREIGN KEY (customer_id) REFERENCES Customers(customer_id)
+);
+--AuditLogs table to monitor significant database changes (e.g., updates, deletes) for transparency and security.
+CREATE TABLE AuditLogs (
+    log_id INT PRIMARY KEY IDENTITY(1,1),
+    table_name NVARCHAR(100),
+    operation NVARCHAR(50) CHECK (operation IN ('INSERT', 'UPDATE', 'DELETE')),
+    change_date DATETIME DEFAULT GETDATE(),
+    user_id INT,
+    details NVARCHAR(1000)
+);
+
