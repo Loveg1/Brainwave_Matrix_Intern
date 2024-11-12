@@ -1,9 +1,7 @@
 # Brainwave_Matrix_Intern
 SQL/Database Management
 CREATE DATABASE LibraryManagement;
-GO
 USE LibraryManagement;
-GO
 --create Books Table
 CREATE TABLE Books (
 	BookID INT PRIMARY KEY IDENTITY(1,1),
